@@ -5,6 +5,7 @@ services:
       context: "./docker"
       dockerfile: "Dockerfile_mysql"
     volumes:
+      - "./docker/mysql/conf/my.cnf:/etc/mysql/my.cnf"
       - mysql-data:/var/lib/mysql
     environment:
       MYSQL_ROOT_PASSWORD: password
@@ -48,7 +49,7 @@ services:
       TZ: "Asia/Tokyo"
       PRJ: "sample"
     volumes:
-      - "../:/root"
+      - "..:/root"
     ports:
       - "8765:80"
     depends_on:
