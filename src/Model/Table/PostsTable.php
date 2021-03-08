@@ -61,7 +61,7 @@ class PostsTable extends Table
         $validator
             ->scalar('title')
             ->maxLength('title', 150, '150文字以内で入力してください。')
-            ->minLength('title', 5, '5文字以上で入力してください。')
+            ->minLength('title', 3, '3文字以上で入力してください。')
             ->requirePresence('title', 'create')
             ->notEmptyString('title', 'タイトルは必ず入力してください。');
 
