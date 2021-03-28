@@ -3,37 +3,17 @@ declare(strict_types=1);
 
 namespace App\Model\Table;
 
-use Cake\ORM\Query;
-use Cake\ORM\RulesChecker;
+use Cake\Auth\DefaultPasswordHasher;
 use Cake\ORM\Table;
 use Cake\Validation\Validator;
 
 /**
  * Users Model
- *
- * @method \App\Model\Entity\User newEmptyEntity()
- * @method \App\Model\Entity\User newEntity(array $data, array $options = [])
- * @method \App\Model\Entity\User[] newEntities(array $data, array $options = [])
- * @method \App\Model\Entity\User get($primaryKey, $options = [])
- * @method \App\Model\Entity\User findOrCreate($search, ?callable $callback = null, $options = [])
- * @method \App\Model\Entity\User patchEntity(\Cake\Datasource\EntityInterface $entity, array $data, array $options = [])
- * @method \App\Model\Entity\User[] patchEntities(iterable $entities, array $data, array $options = [])
- * @method \App\Model\Entity\User|false save(\Cake\Datasource\EntityInterface $entity, $options = [])
- * @method \App\Model\Entity\User saveOrFail(\Cake\Datasource\EntityInterface $entity, $options = [])
- * @method \App\Model\Entity\User[]|\Cake\Datasource\ResultSetInterface|false saveMany(iterable $entities, $options = [])
- * @method \App\Model\Entity\User[]|\Cake\Datasource\ResultSetInterface saveManyOrFail(iterable $entities, $options = [])
- * @method \App\Model\Entity\User[]|\Cake\Datasource\ResultSetInterface|false deleteMany(iterable $entities, $options = [])
- * @method \App\Model\Entity\User[]|\Cake\Datasource\ResultSetInterface deleteManyOrFail(iterable $entities, $options = [])
- *
- * @mixin \Cake\ORM\Behavior\TimestampBehavior
  */
 class UsersTable extends Table
 {
     /**
-     * Initialize method
-     *
-     * @param array $config The configuration for the Table.
-     * @return void
+     * {@inheritdoc}
      */
     public function initialize(array $config): void
     {
@@ -47,43 +27,77 @@ class UsersTable extends Table
     }
 
     /**
-     * Default validation rules.
+     * バリデーションルールの定義
      *
-     * @param \Cake\Validation\Validator $validator Validator instance.
-     * @return \Cake\Validation\Validator
+     * @param \Cake\Validation\Validator $validator バリデーションインスタンス
+     * @return \Cake\Validation\Validator バリデーションインスタンス
      */
     public function validationDefault(Validator $validator): Validator
     {
         $validator
-            ->integer('id')
-            ->allowEmptyString('id', null, 'create');
+            ->nonNegativeInteger('id', 'IDが不正です')
+            ->allowEmpty('id', 'create', 'IDが不正です');
 
         $validator
-            ->scalar('username')
-            ->maxLength('username', 50)
-            ->requirePresence('username', 'create')
-            ->notEmptyString('username', 'ユーザー名は必ず入力してください');
+            ->requirePresence('username', 'create', 'ユーザー名が不正です')
+            ->notEmpty('username', 'ユーザー名は必ず入力してください')
+            ->maxLength('username', 10, 'ユーザー名は10文字以内で入力してください')
+            ->add('username', 'alphaNumeric', [
+                'rule' => function ($value) {
+                    $pattern = '/\A[a-zA-Z0-9]+\z/';
+
+                    return (bool)preg_match($pattern, $value);
+                },
+                'message' => 'ユーザー名は半角英数字のみ入力してください'
+            ])
+            ->add('username', 'unique', [
+                'rule' => 'validateUnique',
+                'provider' => 'table',
+                'message' => 'そのユーザー名は既に使用されています'
+            ]);
 
         $validator
-            ->scalar('password')
-            ->maxLength('password', 255)
-            ->requirePresence('password', 'create')
-            ->notEmptyString('password', 'パスワードは必ず入力してください');
+            ->scalar('nickname', 'ニックネームが不正です')
+            ->requirePresence('nickname', 'create', 'ニックネームが不正です')
+            ->notEmpty('nickname', 'ニックネームは必ず入力してください')
+            ->maxLength('nickname', 20, 'ニックネームは20文字以内で入力してください');
+
+        $validator
+            ->requirePresence('password', 'create', 'パスワードが不正です')
+            ->notEmpty('password', 'パスワードは必ず入力してください')
+            ->lengthBetween('password', [8, 16], 'パスワードは8文字以上16文字以内で入力してください')
+            ->add('password', 'securePassword', [
+                'rule' => function ($value) {
+                    $pattern = '/\A([a-zA-Z]+(?=[0-9])|[0-9]+(?=[a-zA-Z]))[0-9a-zA-Z]+\z/';
+
+                    return (bool)preg_match($pattern, $value);
+                },
+                'message' => 'パスワードは半角英数字混在で入力してください'
+            ])
+            ->add('password', [
+                'compare' => [
+                    'rule' => ['compareWith', 'password_confirm'],
+                    'message' => '確認用のパスワードと一致しません'
+                ]
+            ]);
+
+        $validator
+            ->add(
+                'password_current',
+                'check',
+                [
+                    'rule' => function ($value, $context) {
+                        $user = $this->get($context['data']['id']);
+                        if ((new DefaultPasswordHasher)->check($value, $user->password)) {
+                            return true;
+                        }
+
+                        return false;
+                    },
+                    'message' => '現在のパスワードが正しくありません',
+                ]
+            );
 
         return $validator;
-    }
-
-    /**
-     * Returns a rules checker object that will be used for validating
-     * application integrity.
-     *
-     * @param \Cake\ORM\RulesChecker $rules The rules object to be modified.
-     * @return \Cake\ORM\RulesChecker
-     */
-    public function buildRules(RulesChecker $rules): RulesChecker
-    {
-        $rules->add($rules->isUnique(['username']), ['errorField' => 'username']);
-
-        return $rules;
     }
 }

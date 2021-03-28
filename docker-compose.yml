@@ -6,6 +6,7 @@ services:
       dockerfile: "Dockerfile_mysql"
     volumes:
       - "./docker/mysql/conf/my.cnf:/etc/mysql/my.cnf"
+      - "./docker/mysql/sqls:/docker-entrypoint-initdb.d"
       - mysql-data:/var/lib/mysql
     environment:
       MYSQL_ROOT_PASSWORD: password
